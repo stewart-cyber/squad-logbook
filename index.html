@@ -574,7 +574,7 @@
           <div class="field">
             <label for="s_squad">Squad</label>
             <select id="s_squad">
-              <option>J14</option><option>J15</option><option>J16</option><option>J18</option></option>
+              <option>J14</option><option>J15</option><option>J16</option><option>J18</option>
             </select>
           </div>
           <div class="field span2">
@@ -831,7 +831,7 @@
             <div class="field" id="np_squad_field">
               <label for="np_squad">Squad</label>
               <select id="np_squad">
-                <option>J14</option><option>J15</option><option>J16</option><option>J18</option><option>Trialist</option>
+                <option>J14</option><option>J15</option><option>J16</option><option>J18</option>
               </select>
             </div>
             <div class="field">
@@ -995,7 +995,7 @@ function renderSessionTypesTable(){
   }
   body.innerHTML = sessionTypes.map(t=>`
     <tr data-name="${escapeHtml(t.name)}">
-      <td><input type="text" class="stt-name" value="${escapeHtml(t.name)}" style="width:100%;"></td>
+      <td><input type="text" class="stt-name" value="${escapeHtml(t.name)}" style="width:100%; min-width:140px;"></td>
       <td style="white-space:nowrap;">
         <button class="btn secondary small" data-rename="${escapeHtml(t.name)}">Save</button>
         <button class="btn danger small" data-delst="${escapeHtml(t.name)}">Remove</button>
@@ -1128,7 +1128,7 @@ function renderFieldSchemaTable(){
   }
   body.innerHTML = fieldSchema.map(f=>`
     <tr data-id="${f.id}">
-      <td><input type="text" class="fs-label" value="${escapeHtml(f.label)}" style="width:100%;"></td>
+      <td><input type="text" class="fs-label" value="${escapeHtml(f.label)}" style="width:100%; min-width:140px;"></td>
       <td><select class="fs-type">
         <option value="text" ${f.type==='text'?'selected':''}>Text</option>
         <option value="number" ${f.type==='number'?'selected':''}>Number</option>
