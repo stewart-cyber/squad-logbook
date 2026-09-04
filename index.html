@@ -697,8 +697,39 @@
       </div>
 
       <div class="card">
-        <h2>Coach admin</h2>
-        <p style="font-size:13px; opacity:0.7; margin-top:-8px;">Adding a new athlete or coach isn't done from this page — it's a two-step process in the Supabase dashboard so that account credentials never pass through this website's own code. See ADD_PEOPLE.md for the exact steps.</p>
+        <h2>Add an athlete or coach</h2>
+        <p style="font-size:13px; opacity:0.7; margin-top:-8px;">Creates a real login straight away — no Supabase dashboard needed for this. Pick a username (no @ symbol — this becomes their login) and a password, then hand both to them directly.</p>
+        <div class="grid">
+          <div class="field">
+            <label for="np_name">Full name</label>
+            <input type="text" id="np_name" placeholder="e.g. Aoife Murphy">
+          </div>
+          <div class="field">
+            <label for="np_role">Role</label>
+            <select id="np_role">
+              <option value="athlete">Athlete</option>
+              <option value="coach">Coach</option>
+            </select>
+          </div>
+          <div class="field" id="np_squad_field">
+            <label for="np_squad">Squad</label>
+            <select id="np_squad">
+              <option>J14</option><option>J15</option><option>J16</option><option>J18</option><option>Trialist</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="np_username">Username</label>
+            <input type="text" id="np_username" placeholder="e.g. aoife.murphy">
+          </div>
+          <div class="field span2">
+            <label for="np_password">Password</label>
+            <input type="text" id="np_password" placeholder="At least 6 characters — write it down to hand over">
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn secondary small" id="addPersonBtn">Create login</button>
+          <div class="status-msg" id="addPersonStatus"></div>
+        </div>
       </div>
     </section>
 
@@ -915,6 +946,56 @@ async function onAddField(){
   statusEl.textContent = 'Field added.'; statusEl.className = 'status-msg ok';
   await loadFieldSchema();
   renderFieldSchemaTable();
+}
+
+// ============================================================
+// add athlete/coach (calls the add-person Edge Function — see
+// ADD_PEOPLE.md for how to deploy it once in Supabase)
+// ============================================================
+function updateAddPersonSquadVisibility(){
+  const role = document.getElementById('np_role').value;
+  document.getElementById('np_squad_field').style.display = role === 'athlete' ? '' : 'none';
+}
+
+async function onAddPerson(){
+  const statusEl = document.getElementById('addPersonStatus');
+  const name = document.getElementById('np_name').value.trim();
+  const role = document.getElementById('np_role').value;
+  const squad = document.getElementById('np_squad').value;
+  const username = document.getElementById('np_username').value.trim().toLowerCase();
+  const password = document.getElementById('np_password').value;
+
+  if(!name || !username || !password){
+    statusEl.textContent = 'Fill in name, username, and password.'; statusEl.className = 'status-msg err'; return;
+  }
+  if(username.includes('@') || username.includes(' ')){
+    statusEl.textContent = 'Username should have no spaces or @ symbol.'; statusEl.className = 'status-msg err'; return;
+  }
+  if(password.length < 6){
+    statusEl.textContent = 'Password needs to be at least 6 characters.'; statusEl.className = 'status-msg err'; return;
+  }
+
+  statusEl.textContent = 'Creating login...'; statusEl.className = 'status-msg ok';
+  const { data, error } = await supabase.functions.invoke('add-person', {
+    body: { username, password, name, role, squad }
+  });
+
+  if(error || (data && data.error)){
+    statusEl.textContent = (data && data.error) ? data.error : 'Could not create login — try again.';
+    statusEl.className = 'status-msg err';
+    return;
+  }
+
+  statusEl.textContent = `Created — username "${username}", share the password directly.`;
+  statusEl.className = 'status-msg ok';
+  document.getElementById('np_name').value = '';
+  document.getElementById('np_username').value = '';
+  document.getElementById('np_password').value = '';
+  if(role === 'athlete'){
+    await loadAthletes();
+    populateCoachAthleteSelect();
+    renderRoster();
+  }
 }
 
 // ============================================================
@@ -1271,6 +1352,9 @@ async function init(){
   document.getElementById('saveSessionBtn').addEventListener('click', onSaveSession);
   document.getElementById('saveTestBtn').addEventListener('click', onSaveTest);
   document.getElementById('addFieldBtn').addEventListener('click', onAddField);
+  document.getElementById('addPersonBtn').addEventListener('click', onAddPerson);
+  document.getElementById('np_role').addEventListener('change', updateAddPersonSquadVisibility);
+  updateAddPersonSquadVisibility();
   document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
   document.getElementById('coachAthleteSelect').addEventListener('change', (e)=> loadCoachAthleteView(e.target.value));
 
