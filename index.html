@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Squad Logbook</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -424,14 +425,43 @@
     margin-bottom:4px;
   }
 
+  .table-scroll{
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+
   @media(max-width:820px){
     .app{flex-direction:column;}
-    .rail{width:100%; border-right:none; border-bottom:1px solid var(--line); padding:18px;}
-    .page{padding:24px 20px 50px;}
+    .rail{width:100%; border-right:none; border-bottom:1px solid var(--line); padding:14px 18px;}
+    .brand{font-size:19px;}
+    .brand-sub{margin-bottom:14px;}
+    .tab{
+      display:inline-block;
+      width:auto;
+      border-right:none;
+      border-bottom:3px solid transparent;
+      padding:8px 12px;
+      margin-right:4px;
+    }
+    .tab.active{ border-bottom-color:var(--brick); }
+    .whoami{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin-top:12px;
+      padding-top:12px;
+      border-top:1px solid var(--line);
+    }
+    .whoami .who-role{ margin-bottom:0; }
+    .whoami .btn{ width:auto; }
+    .page{padding:20px 16px 40px;}
     .grid{grid-template-columns:1fr;}
     .two-col{grid-template-columns:1fr;}
     .feed-entry{grid-template-columns:60px 1fr; }
     .feed-metrics{grid-column:1/-1; text-align:left; margin-top:4px;}
+    input, select, textarea{ font-size:16px; } /* prevents iOS auto-zoom on focus */
+    .card{ padding:18px 16px; }
+    .roster-table, .fields-table{ font-size:12.5px; }
   }
 
   /* ---- login screen ---- */
@@ -487,6 +517,7 @@
     letter-spacing:0.04em;
     margin-bottom:10px;
   }
+  .whoami .btn{ width:100%; }
 </style>
 </head>
 <body>
@@ -514,9 +545,11 @@
     <button class="tab" data-tab="coach" id="navCoach">Coach view</button>
 
     <div class="whoami">
-      <div class="who-name" id="whoName"></div>
-      <div class="who-role" id="whoRole"></div>
-      <button class="btn secondary small" id="signOutBtn" style="width:100%;">Sign out</button>
+      <div class="who-info">
+        <div class="who-name" id="whoName"></div>
+        <div class="who-role" id="whoRole"></div>
+      </div>
+      <button class="btn secondary small" id="signOutBtn">Sign out</button>
     </div>
   </nav>
 
@@ -686,12 +719,14 @@
             <button class="btn secondary small" id="exportExcelBtn">Export to Excel</button>
           </div>
           <div class="status-msg" id="exportStatus"></div>
+          <div class="table-scroll">
           <table class="roster-table" id="rosterTable">
             <thead>
               <tr><th></th><th>Athlete</th><th>Squad</th><th>Last entry</th><th>Avg RPE (7d)</th><th>Avg sleep (7d)</th><th>Resting HR</th></tr>
             </thead>
             <tbody id="rosterBody"></tbody>
           </table>
+          </div>
           <p class="empty" id="rosterEmpty" style="display:none;">No athletes registered yet.</p>
         </div>
 
@@ -714,10 +749,12 @@
         <div class="card">
           <h2>Manage session types</h2>
           <p style="font-size:13px; opacity:0.7; margin-top:-8px;">These are the options athletes pick from on the session form. Renaming one doesn't relabel sessions already logged under the old name; removing one just stops it being offered going forward.</p>
+          <div class="table-scroll">
           <table class="fields-table" id="sessionTypesTable">
             <thead><tr><th>Session type</th><th></th></tr></thead>
             <tbody id="sessionTypesBody"></tbody>
           </table>
+          </div>
           <div class="grid">
             <div class="field span2">
               <label for="st_name">New session type</label>
@@ -733,10 +770,12 @@
         <div class="card">
           <h2>Manage session fields</h2>
           <p style="font-size:13px; opacity:0.7; margin-top:-8px;">Every field on the session form lives here, including the original heart rate, split, rate, distance, time, and pieces fields. Rename any of them, change their type or unit, move them to a different session type, or remove them.</p>
+          <div class="table-scroll">
           <table class="fields-table" id="customFieldsTable">
-            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Applies to</th><th></th></tr></thead>
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Format</th><th>Applies to</th><th></th></tr></thead>
             <tbody id="customFieldsBody"></tbody>
           </table>
+          </div>
           <div class="grid">
             <div class="field">
               <label for="cf_label">Field name</label>
@@ -749,6 +788,15 @@
             <div class="field">
               <label for="cf_unit">Unit (optional)</label>
               <input type="text" id="cf_unit" placeholder="e.g. bpm, kg">
+            </div>
+            <div class="field">
+              <label for="cf_format">Format</label>
+              <select id="cf_format">
+                <option value="">Plain text</option>
+                <option value="time_mmss">Time (mm:ss)</option>
+                <option value="time_mmss_tenths">Time (mm:ss.t)</option>
+                <option value="time_hmmss">Time (h:mm:ss)</option>
+              </select>
             </div>
             <div class="field">
               <label for="cf_applies">Applies to</label>
@@ -765,11 +813,11 @@
       <div id="coachSubAdd" style="display:none;">
         <div class="card">
           <h2>Add an athlete or coach</h2>
-          <p style="font-size:13px; opacity:0.7; margin-top:-8px;">Creates a real login straight away — no Supabase dashboard needed for this. Pick a username (no @ symbol — this becomes their login) and a password, then hand both to them directly.</p>
+          <p style="font-size:13px; opacity:0.7; margin-top:-8px;">Creates a real login straight away — only use first name and first letter of surname. Pick a username (no @ symbol — this becomes their login) and a password, then hand both to them directly.</p>
           <div class="grid">
             <div class="field">
               <label for="np_name">Full name</label>
-              <input type="text" id="np_name" placeholder="e.g. Aoife Murphy">
+              <input type="text" id="np_name" placeholder="e.g. Aoife L">
             </div>
             <div class="field">
               <label for="np_role">Role</label>
@@ -786,7 +834,7 @@
             </div>
             <div class="field">
               <label for="np_username">Username</label>
-              <input type="text" id="np_username" placeholder="e.g. aoife.murphy">
+              <input type="text" id="np_username" placeholder="e.g. aoife.l">
             </div>
             <div class="field span2">
               <label for="np_password">Password</label>
@@ -1015,6 +1063,15 @@ function fieldsForType(type){
   return fieldSchema.filter(f=>f.session_type === type || f.session_type === 'All');
 }
 
+// ---- text format enforcement (time formats, extendable later) ----
+const FORMAT_DEFS = {
+  '': { label: 'Plain text', regex: null, example: '', placeholder: '' },
+  'time_mmss': { label: 'Time (mm:ss)', regex: /^\d{1,3}:[0-5]\d$/, example: 'mm:ss, e.g. 10:00', placeholder: 'e.g. 10:00' },
+  'time_mmss_tenths': { label: 'Time (mm:ss.t)', regex: /^\d{1,3}:[0-5]\d\.\d$/, example: 'mm:ss.t, e.g. 21:15.3', placeholder: 'e.g. 21:15.3' },
+  'time_hmmss': { label: 'Time (h:mm:ss)', regex: /^\d{1,2}:[0-5]\d:[0-5]\d$/, example: 'h:mm:ss, e.g. 1:15:00', placeholder: 'e.g. 1:15:00' }
+};
+function formatDef(key){ return FORMAT_DEFS[key] || FORMAT_DEFS['']; }
+
 function renderDynamicFields(type){
   const container = document.getElementById('dynamicFields');
   const fields = fieldsForType(type);
@@ -1023,9 +1080,12 @@ function renderDynamicFields(type){
   container.innerHTML = fields.map(f=>{
     const inputType = f.type === 'number' ? 'number' : 'text';
     const unitLabel = f.unit ? ` (${escapeHtml(f.unit)})` : '';
+    const fmt = formatDef(f.format);
+    const placeholder = fmt.placeholder || '';
+    const title = fmt.example ? `Format: ${fmt.example}` : '';
     return `<div class="field">
       <label for="dyn_${f.id}">${escapeHtml(f.label)}${unitLabel}</label>
-      <input type="${inputType}" id="dyn_${f.id}" data-label="${escapeHtml(f.label)}" data-unit="${escapeHtml(f.unit||'')}">
+      <input type="${inputType}" id="dyn_${f.id}" data-label="${escapeHtml(f.label)}" data-unit="${escapeHtml(f.unit||'')}" data-format="${escapeHtml(f.format||'')}" placeholder="${escapeHtml(placeholder)}" title="${escapeHtml(title)}">
     </div>`;
   }).join('');
 }
@@ -1042,10 +1102,26 @@ function collectDynamicDetails(){
   return details;
 }
 
+// Returns null if every field is valid, or a message naming the first
+// field that doesn't match its required format.
+function validateDynamicDetails(){
+  const container = document.getElementById('dynamicFields');
+  const inputs = container.querySelectorAll('input');
+  for(const inp of inputs){
+    const val = inp.value.trim();
+    if(val === '') continue;
+    const fmt = formatDef(inp.dataset.format);
+    if(fmt.regex && !fmt.regex.test(val)){
+      return `"${inp.dataset.label}" should look like ${fmt.example}.`;
+    }
+  }
+  return null;
+}
+
 function renderFieldSchemaTable(){
   const body = document.getElementById('customFieldsBody');
   if(!fieldSchema.length){
-    body.innerHTML = '<tr><td colspan="5" class="empty">No fields defined. Add one below.</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="empty">No fields defined. Add one below.</td></tr>';
     return;
   }
   body.innerHTML = fieldSchema.map(f=>`
@@ -1056,6 +1132,9 @@ function renderFieldSchemaTable(){
         <option value="number" ${f.type==='number'?'selected':''}>Number</option>
       </select></td>
       <td><input type="text" class="fs-unit" value="${escapeHtml(f.unit || '')}" style="width:64px;"></td>
+      <td><select class="fs-format">
+        ${Object.keys(FORMAT_DEFS).map(k=>`<option value="${k}" ${(f.format||'')===k?'selected':''}>${FORMAT_DEFS[k].label}</option>`).join('')}
+      </select></td>
       <td><select class="fs-applies">
         <option value="All" ${f.session_type==='All'?'selected':''}>All session types</option>
         ${sessionTypes.map(t=>`<option value="${escapeHtml(t.name)}" ${f.session_type===t.name?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
@@ -1073,8 +1152,9 @@ function renderFieldSchemaTable(){
       const label = tr.querySelector('.fs-label').value.trim();
       const type = tr.querySelector('.fs-type').value;
       const unit = tr.querySelector('.fs-unit').value.trim();
+      const format = tr.querySelector('.fs-format').value;
       const session_type = tr.querySelector('.fs-applies').value;
-      const { error } = await supabase.from('field_schema').update({ label, type, unit, session_type }).eq('id', id);
+      const { error } = await supabase.from('field_schema').update({ label, type, unit, format, session_type }).eq('id', id);
       const statusEl = document.getElementById('fieldStatus');
       if(error){ statusEl.textContent = 'Could not save — try again.'; statusEl.className='status-msg err'; return; }
       statusEl.textContent = 'Field updated.'; statusEl.className = 'status-msg ok';
@@ -1098,11 +1178,12 @@ async function onAddField(){
   const label = document.getElementById('cf_label').value.trim();
   const type = document.getElementById('cf_type').value;
   const unit = document.getElementById('cf_unit').value.trim();
+  const format = document.getElementById('cf_format').value;
   const session_type = document.getElementById('cf_applies').value;
   const statusEl = document.getElementById('fieldStatus');
   if(!label){ statusEl.textContent = 'Give the field a name.'; statusEl.className='status-msg err'; return; }
   const id = 'f_' + Date.now();
-  const { error } = await supabase.from('field_schema').insert({ id, label, type, unit, session_type });
+  const { error } = await supabase.from('field_schema').insert({ id, label, type, unit, format, session_type });
   if(error){ statusEl.textContent = 'Could not add field.'; statusEl.className='status-msg err'; return; }
   document.getElementById('cf_label').value = '';
   document.getElementById('cf_unit').value = '';
@@ -1144,7 +1225,25 @@ async function onAddPerson(){
   });
 
   if(error || (data && data.error)){
-    statusEl.textContent = (data && data.error) ? data.error : 'Could not create login — try again.';
+    let message = 'Could not create login — try again.';
+    if(data && data.error){
+      message = data.error;
+    } else if(error){
+      // supabase-js puts the actual HTTP response on error.context for
+      // FunctionsHttpError — try to read the real error message out of it.
+      try{
+        if(error.context && typeof error.context.json === 'function'){
+          const body = await error.context.json();
+          if(body && body.error) message = body.error;
+        } else if(error.message){
+          message = error.message;
+        }
+      }catch(readErr){
+        if(error.message) message = error.message;
+      }
+    }
+    console.error('add-person failed:', error, data);
+    statusEl.textContent = message;
     statusEl.className = 'status-msg err';
     return;
   }
@@ -1515,6 +1614,12 @@ async function onSaveHr(){
 // ============================================================
 async function onSaveSession(){
   const statusEl = document.getElementById('sessionStatus');
+  const formatError = validateDynamicDetails();
+  if(formatError){
+    statusEl.textContent = formatError;
+    statusEl.className = 'status-msg err';
+    return;
+  }
   const entry = {
     date: document.getElementById('s_date').value || todayISO(),
     squad: document.getElementById('s_squad').value,
