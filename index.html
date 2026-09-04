@@ -81,6 +81,23 @@
     background:var(--paper-raised);
   }
   .tab:hover:not(.active){opacity:0.85;}
+  .subtab{
+    display:inline-block;
+    width:auto;
+    background:none;
+    border:none;
+    border-bottom:3px solid transparent;
+    padding:8px 16px 10px 4px;
+    margin-right:18px;
+    font-family:'Source Sans 3', sans-serif;
+    font-size:14.5px;
+    font-weight:600;
+    color:var(--ink);
+    opacity:0.55;
+    cursor:pointer;
+  }
+  .subtab.active{ opacity:1; color:var(--green-dark); border-bottom-color:var(--brick); }
+  .subtab:hover:not(.active){ opacity:0.85; }
   .whoami{
     margin:24px 4px 0 4px;
     padding-top:16px;
@@ -492,6 +509,7 @@
     <p class="brand">Squad Logbook</p>
     <p class="brand-sub">Daily training &amp; wellness</p>
     <button class="tab active" data-tab="session" id="navSession">Log a session</button>
+    <button class="tab" data-tab="hr" id="navHr">Resting HR</button>
     <button class="tab" data-tab="test" id="navTest">Log a test</button>
     <button class="tab" data-tab="coach" id="navCoach">Coach view</button>
 
@@ -526,10 +544,7 @@
           </div>
           <div class="field span2">
             <label for="s_type">Session type</label>
-            <select id="s_type">
-              <option>Water</option><option>Gym</option><option>Erg</option>
-              <option>Cross-training</option><option>Rest day</option>
-            </select>
+            <select id="s_type"></select>
           </div>
         </div>
 
@@ -574,6 +589,35 @@
       <div class="card">
         <h2>Your recent entries</h2>
         <div id="myFeed"><p class="empty">Nothing logged yet.</p></div>
+      </div>
+    </section>
+
+    <!-- RESTING HR TAB -->
+    <section id="tab-hr" style="display:none;">
+      <div class="page-head"><h1>Resting heart rate</h1></div>
+
+      <div class="card">
+        <h2>Today's reading</h2>
+        <p style="font-size:13px; opacity:0.7; margin-top:-8px;">Best taken first thing in the morning, before getting up. One entry per day — saving again on the same day updates it rather than adding a duplicate.</p>
+        <div class="grid">
+          <div class="field">
+            <label for="hr_date">Date</label>
+            <input type="date" id="hr_date">
+          </div>
+          <div class="field">
+            <label for="hr_value">Resting heart rate (bpm)</label>
+            <input type="number" id="hr_value" min="30" max="150" placeholder="e.g. 58">
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn" id="saveHrBtn">Save reading</button>
+          <div class="status-msg" id="hrStatus"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Recent readings</h2>
+        <div id="myHrFeed"><p class="empty">Nothing logged yet.</p></div>
       </div>
     </section>
 
@@ -629,106 +673,130 @@
     <section id="tab-coach" style="display:none;">
       <div class="page-head"><h1>Coach view</h1></div>
 
-      <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:baseline;">
-          <h2 style="margin-bottom:0;">Squad roster — last check-in</h2>
-          <button class="btn secondary small" id="exportExcelBtn">Export to Excel</button>
-        </div>
-        <div class="status-msg" id="exportStatus"></div>
-        <table class="roster-table" id="rosterTable">
-          <thead>
-            <tr><th></th><th>Athlete</th><th>Squad</th><th>Last entry</th><th>Avg RPE (7d)</th><th>Avg sleep (7d)</th></tr>
-          </thead>
-          <tbody id="rosterBody"></tbody>
-        </table>
-        <p class="empty" id="rosterEmpty" style="display:none;">No athletes registered yet.</p>
+      <div style="margin-bottom:20px; border-bottom:1px solid var(--line);">
+        <button class="subtab active" data-coach-sub="overview">Overview</button>
+        <button class="subtab" data-coach-sub="fields">Manage fields</button>
+        <button class="subtab" data-coach-sub="add">Add person</button>
       </div>
 
-      <div class="two-col">
+      <div id="coachSubOverview">
         <div class="card">
-          <h2>Load / wellness trend</h2>
-          <label style="font-size:12px; text-transform:uppercase; letter-spacing:0.05em; opacity:0.6;">Athlete</label>
-          <select id="coachAthleteSelect" style="width:100%; margin-top:6px;"></select>
-          <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <h2 style="margin-bottom:0;">Squad roster — last check-in</h2>
+            <button class="btn secondary small" id="exportExcelBtn">Export to Excel</button>
+          </div>
+          <div class="status-msg" id="exportStatus"></div>
+          <table class="roster-table" id="rosterTable">
+            <thead>
+              <tr><th></th><th>Athlete</th><th>Squad</th><th>Last entry</th><th>Avg RPE (7d)</th><th>Avg sleep (7d)</th><th>Resting HR</th></tr>
+            </thead>
+            <tbody id="rosterBody"></tbody>
+          </table>
+          <p class="empty" id="rosterEmpty" style="display:none;">No athletes registered yet.</p>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <h2>Load / wellness trend</h2>
+            <label style="font-size:12px; text-transform:uppercase; letter-spacing:0.05em; opacity:0.6;">Athlete</label>
+            <select id="coachAthleteSelect" style="width:100%; margin-top:6px;"></select>
+            <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+          </div>
+
+          <div class="card">
+            <h2 id="coachFeedTitle">Full log</h2>
+            <div id="coachFeed"><p class="empty">Select an athlete.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="coachSubFields" style="display:none;">
+        <div class="card">
+          <h2>Manage session types</h2>
+          <p style="font-size:13px; opacity:0.7; margin-top:-8px;">These are the options athletes pick from on the session form. Renaming one doesn't relabel sessions already logged under the old name; removing one just stops it being offered going forward.</p>
+          <table class="fields-table" id="sessionTypesTable">
+            <thead><tr><th>Session type</th><th></th></tr></thead>
+            <tbody id="sessionTypesBody"></tbody>
+          </table>
+          <div class="grid">
+            <div class="field span2">
+              <label for="st_name">New session type</label>
+              <input type="text" id="st_name" placeholder="e.g. Tank, Circuits">
+            </div>
+          </div>
+          <div style="margin-top:12px;">
+            <button class="btn secondary small" id="addSessionTypeBtn">Add session type</button>
+            <div class="status-msg" id="sessionTypeStatus"></div>
+          </div>
         </div>
 
         <div class="card">
-          <h2 id="coachFeedTitle">Full log</h2>
-          <div id="coachFeed"><p class="empty">Select an athlete.</p></div>
+          <h2>Manage session fields</h2>
+          <p style="font-size:13px; opacity:0.7; margin-top:-8px;">Every field on the session form lives here, including the original heart rate, split, rate, distance, time, and pieces fields. Rename any of them, change their type or unit, move them to a different session type, or remove them.</p>
+          <table class="fields-table" id="customFieldsTable">
+            <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Applies to</th><th></th></tr></thead>
+            <tbody id="customFieldsBody"></tbody>
+          </table>
+          <div class="grid">
+            <div class="field">
+              <label for="cf_label">Field name</label>
+              <input type="text" id="cf_label" placeholder="e.g. Wind direction">
+            </div>
+            <div class="field">
+              <label for="cf_type">Field type</label>
+              <select id="cf_type"><option value="text">Text</option><option value="number">Number</option></select>
+            </div>
+            <div class="field">
+              <label for="cf_unit">Unit (optional)</label>
+              <input type="text" id="cf_unit" placeholder="e.g. bpm, kg">
+            </div>
+            <div class="field">
+              <label for="cf_applies">Applies to</label>
+              <select id="cf_applies"></select>
+            </div>
+          </div>
+          <div style="margin-top:12px;">
+            <button class="btn secondary small" id="addFieldBtn">Add field</button>
+            <div class="status-msg" id="fieldStatus"></div>
+          </div>
         </div>
       </div>
 
-      <div class="card">
-        <h2>Manage session fields</h2>
-        <p style="font-size:13px; opacity:0.7; margin-top:-8px;">Every field on the session form lives here, including the original heart rate, split, rate, distance, time, and pieces fields. Rename any of them, change their type or unit, move them to a different session type, or remove them.</p>
-        <table class="fields-table" id="customFieldsTable">
-          <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Applies to</th><th></th></tr></thead>
-          <tbody id="customFieldsBody"></tbody>
-        </table>
-        <div class="grid">
-          <div class="field">
-            <label for="cf_label">Field name</label>
-            <input type="text" id="cf_label" placeholder="e.g. Wind direction">
+      <div id="coachSubAdd" style="display:none;">
+        <div class="card">
+          <h2>Add an athlete or coach</h2>
+          <p style="font-size:13px; opacity:0.7; margin-top:-8px;">Creates a real login straight away — no Supabase dashboard needed for this. Pick a username (no @ symbol — this becomes their login) and a password, then hand both to them directly.</p>
+          <div class="grid">
+            <div class="field">
+              <label for="np_name">Full name</label>
+              <input type="text" id="np_name" placeholder="e.g. Aoife Murphy">
+            </div>
+            <div class="field">
+              <label for="np_role">Role</label>
+              <select id="np_role">
+                <option value="athlete">Athlete</option>
+                <option value="coach">Coach</option>
+              </select>
+            </div>
+            <div class="field" id="np_squad_field">
+              <label for="np_squad">Squad</label>
+              <select id="np_squad">
+                <option>J14</option><option>J15</option><option>J16</option><option>J18</option><option>Trialist</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="np_username">Username</label>
+              <input type="text" id="np_username" placeholder="e.g. aoife.murphy">
+            </div>
+            <div class="field span2">
+              <label for="np_password">Password</label>
+              <input type="text" id="np_password" placeholder="At least 6 characters — write it down to hand over">
+            </div>
           </div>
-          <div class="field">
-            <label for="cf_type">Field type</label>
-            <select id="cf_type"><option value="text">Text</option><option value="number">Number</option></select>
+          <div style="margin-top:12px;">
+            <button class="btn secondary small" id="addPersonBtn">Create login</button>
+            <div class="status-msg" id="addPersonStatus"></div>
           </div>
-          <div class="field">
-            <label for="cf_unit">Unit (optional)</label>
-            <input type="text" id="cf_unit" placeholder="e.g. bpm, kg">
-          </div>
-          <div class="field">
-            <label for="cf_applies">Applies to</label>
-            <select id="cf_applies">
-              <option value="All">All session types</option>
-              <option value="Water">Water</option>
-              <option value="Gym">Gym</option>
-              <option value="Erg">Erg</option>
-              <option value="Cross-training">Cross-training</option>
-              <option value="Rest day">Rest day</option>
-            </select>
-          </div>
-        </div>
-        <div style="margin-top:12px;">
-          <button class="btn secondary small" id="addFieldBtn">Add field</button>
-          <div class="status-msg" id="fieldStatus"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Add an athlete or coach</h2>
-        <p style="font-size:13px; opacity:0.7; margin-top:-8px;">Creates a real login straight away — no Supabase dashboard needed for this. Pick a username (no @ symbol — this becomes their login) and a password, then hand both to them directly.</p>
-        <div class="grid">
-          <div class="field">
-            <label for="np_name">Full name</label>
-            <input type="text" id="np_name" placeholder="e.g. Aoife Murphy">
-          </div>
-          <div class="field">
-            <label for="np_role">Role</label>
-            <select id="np_role">
-              <option value="athlete">Athlete</option>
-              <option value="coach">Coach</option>
-            </select>
-          </div>
-          <div class="field" id="np_squad_field">
-            <label for="np_squad">Squad</label>
-            <select id="np_squad">
-              <option>J14</option><option>J15</option><option>J16</option><option>J18</option><option>Trialist</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="np_username">Username</label>
-            <input type="text" id="np_username" placeholder="e.g. aoife.murphy">
-          </div>
-          <div class="field span2">
-            <label for="np_password">Password</label>
-            <input type="text" id="np_password" placeholder="At least 6 characters — write it down to hand over">
-          </div>
-        </div>
-        <div style="margin-top:12px;">
-          <button class="btn secondary small" id="addPersonBtn">Create login</button>
-          <div class="status-msg" id="addPersonStatus"></div>
         </div>
       </div>
     </section>
@@ -756,6 +824,7 @@ const LOGIN_DOMAIN = "squad-logbook.local";
 let currentUser = null;   // { id, name, role, squad }
 let athletes = [];        // [{id, name, squad}] — role:'athlete' profiles, coach-visible only
 let fieldSchema = [];     // [{id,label,type,unit,session_type}]
+let sessionTypes = [];    // [{name, sort_order}]
 
 function todayISO(){ return new Date().toISOString().slice(0,10); }
 function fmtDate(iso){
@@ -814,17 +883,21 @@ async function showApp(){
 
   const isCoach = currentUser.role === 'coach';
   document.getElementById('navSession').style.display = isCoach ? 'none' : '';
+  document.getElementById('navHr').style.display = isCoach ? 'none' : '';
   document.getElementById('navTest').style.display = isCoach ? 'none' : '';
   document.getElementById('navCoach').style.display = isCoach ? '' : 'none';
 
+  await loadSessionTypes();
   await loadFieldSchema();
 
   if(isCoach){
     showTab('coach');
   } else {
     document.getElementById('s_date').value = todayISO();
+    document.getElementById('hr_date').value = todayISO();
     document.getElementById('t_date').value = todayISO();
     document.getElementById('todayLabel').textContent = new Date().toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'});
+    populateSessionTypeSelect(document.getElementById('s_type'), false);
     renderDynamicFields(document.getElementById('s_type').value);
     showTab('session');
     refreshMyFeeds();
@@ -840,10 +913,99 @@ async function signOut(){
 }
 
 // ============================================================
+// session types (coach-editable list of options on the session form)
+// ============================================================
+async function loadSessionTypes(){
+  const { data, error } = await supabase.from('session_types').select('*').order('sort_order');
+  sessionTypes = error || !data ? [] : data;
+}
+
+function populateSessionTypeSelect(selectEl, includeAll){
+  const prev = selectEl.value;
+  selectEl.innerHTML = '';
+  if(includeAll){
+    const o = document.createElement('option');
+    o.value = 'All'; o.textContent = 'All session types';
+    selectEl.appendChild(o);
+  }
+  sessionTypes.forEach(t=>{
+    const o = document.createElement('option');
+    o.value = t.name; o.textContent = t.name;
+    selectEl.appendChild(o);
+  });
+  const values = Array.from(selectEl.options).map(o=>o.value);
+  if(values.includes(prev)) selectEl.value = prev;
+}
+
+function renderSessionTypesTable(){
+  const body = document.getElementById('sessionTypesBody');
+  if(!sessionTypes.length){
+    body.innerHTML = '<tr><td colspan="2" class="empty">No session types defined.</td></tr>';
+    return;
+  }
+  body.innerHTML = sessionTypes.map(t=>`
+    <tr data-name="${escapeHtml(t.name)}">
+      <td><input type="text" class="stt-name" value="${escapeHtml(t.name)}" style="width:100%;"></td>
+      <td style="white-space:nowrap;">
+        <button class="btn secondary small" data-rename="${escapeHtml(t.name)}">Save</button>
+        <button class="btn danger small" data-delst="${escapeHtml(t.name)}">Remove</button>
+      </td>
+    </tr>`).join('');
+
+  body.querySelectorAll('button[data-rename]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const oldName = btn.dataset.rename;
+      const tr = btn.closest('tr');
+      const newName = tr.querySelector('.stt-name').value.trim();
+      const statusEl = document.getElementById('sessionTypeStatus');
+      if(!newName){ statusEl.textContent = 'Name can\'t be empty.'; statusEl.className='status-msg err'; return; }
+      if(newName === oldName){ return; }
+      const { error } = await supabase.from('session_types').update({ name: newName }).eq('name', oldName);
+      if(error){ statusEl.textContent = 'Could not rename — that name may already exist.'; statusEl.className='status-msg err'; return; }
+      // keep fields pointing at the right type
+      await supabase.from('field_schema').update({ session_type: newName }).eq('session_type', oldName);
+      statusEl.textContent = 'Renamed.'; statusEl.className = 'status-msg ok';
+      await loadSessionTypes();
+      await loadFieldSchema();
+      renderSessionTypesTable();
+      renderFieldSchemaTable();
+      populateAppliesToSelect(document.getElementById('cf_applies'));
+    });
+  });
+  body.querySelectorAll('button[data-delst]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const name = btn.dataset.delst;
+      if(!confirm(`Remove "${name}"? Athletes won't be able to pick it for new sessions. Sessions already logged under it are unaffected, but any fields attached only to it will stop appearing.`)) return;
+      await supabase.from('session_types').delete().eq('name', name);
+      await loadSessionTypes();
+      renderSessionTypesTable();
+      populateAppliesToSelect(document.getElementById('cf_applies'));
+    });
+  });
+}
+
+async function onAddSessionType(){
+  const input = document.getElementById('st_name');
+  const name = input.value.trim();
+  const statusEl = document.getElementById('sessionTypeStatus');
+  if(!name){ statusEl.textContent = 'Give it a name.'; statusEl.className='status-msg err'; return; }
+  const sort_order = sessionTypes.length ? Math.max(...sessionTypes.map(t=>t.sort_order)) + 1 : 1;
+  const { error } = await supabase.from('session_types').insert({ name, sort_order });
+  if(error){ statusEl.textContent = 'Could not add — that name may already exist.'; statusEl.className='status-msg err'; return; }
+  input.value = '';
+  statusEl.textContent = 'Added.'; statusEl.className = 'status-msg ok';
+  await loadSessionTypes();
+  renderSessionTypesTable();
+  populateAppliesToSelect(document.getElementById('cf_applies'));
+}
+
+function populateAppliesToSelect(selectEl){
+  populateSessionTypeSelect(selectEl, true);
+}
+
+// ============================================================
 // field schema (coach-editable session form fields)
 // ============================================================
-const APPLIES_TO_OPTIONS = ['All','Water','Gym','Erg','Cross-training','Rest day'];
-
 async function loadFieldSchema(){
   const { data, error } = await supabase.from('field_schema').select('*').order('session_type');
   fieldSchema = error || !data ? [] : data;
@@ -895,7 +1057,8 @@ function renderFieldSchemaTable(){
       </select></td>
       <td><input type="text" class="fs-unit" value="${escapeHtml(f.unit || '')}" style="width:64px;"></td>
       <td><select class="fs-applies">
-        ${APPLIES_TO_OPTIONS.map(t=>`<option value="${t}" ${f.session_type===t?'selected':''}>${t==='All' ? 'All session types' : t}</option>`).join('')}
+        <option value="All" ${f.session_type==='All'?'selected':''}>All session types</option>
+        ${sessionTypes.map(t=>`<option value="${escapeHtml(t.name)}" ${f.session_type===t.name?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
       </select></td>
       <td style="white-space:nowrap;">
         <button class="btn secondary small" data-save="${f.id}">Save</button>
@@ -1093,6 +1256,8 @@ async function refreshMyFeeds(){
   renderSessionFeed('myFeed', sessions, 10, null);
   const tests = await getTestEntries(currentUser.id);
   renderTestFeed('myTestFeed', tests);
+  const hrHistory = await getRestingHRHistory(currentUser.id);
+  renderHrFeed('myHrFeed', hrHistory, 14);
 }
 
 // ============================================================
@@ -1122,19 +1287,21 @@ async function renderRoster(){
   const rows = [];
   for(const a of athletes){
     const entries = await getSessionEntries(a.id);
-    if(!entries.length){ rows.push({name:a.name, id:a.id, squad:a.squad||'—', lastDate:null, avgRpe:null, avgSleep:null, gap:999}); continue; }
+    const latestHr = await getLatestRestingHR(a.id);
+    if(!entries.length){ rows.push({name:a.name, id:a.id, squad:a.squad||'—', lastDate:null, avgRpe:null, avgSleep:null, gap:999, latestHr}); continue; }
     const last = entries[0];
     const gap = daysAgo(last.date);
     const last7 = entries.filter(e => daysAgo(e.date) <= 7);
     const avgRpe = last7.length ? (last7.reduce((s,e)=>s+(Number(e.rpe)||0),0)/last7.length) : null;
     const sleepVals = last7.filter(e=>e.sleep).map(e=>Number(e.sleep));
     const avgSleep = sleepVals.length ? (sleepVals.reduce((x,y)=>x+y,0)/sleepVals.length) : null;
-    rows.push({name:a.name, id:a.id, squad:last.squad || a.squad || '—', lastDate:last.date, avgRpe, avgSleep, gap});
+    rows.push({name:a.name, id:a.id, squad:last.squad || a.squad || '—', lastDate:last.date, avgRpe, avgSleep, gap, latestHr});
   }
   rows.sort((a,b)=> a.gap - b.gap);
   body.innerHTML = rows.map(r=>{
     let flagClass = 'flag-ok';
     if(r.gap >= 5) flagClass = 'flag-stale'; else if(r.gap >= 3) flagClass = 'flag-warn';
+    const hrLabel = r.latestHr ? `${r.latestHr.resting_hr} bpm (${fmtDate(r.latestHr.date)})` : '—';
     return `<tr data-id="${r.id}">
       <td><span class="flag-dot ${flagClass}"></span></td>
       <td>${escapeHtml(r.name)}</td>
@@ -1142,6 +1309,7 @@ async function renderRoster(){
       <td>${r.lastDate ? fmtDate(r.lastDate) + ' (' + r.gap + 'd ago)' : 'never'}</td>
       <td>${r.avgRpe !== null ? r.avgRpe.toFixed(1) : '—'}</td>
       <td>${r.avgSleep !== null ? r.avgSleep.toFixed(1) + 'h' : '—'}</td>
+      <td>${escapeHtml(hrLabel)}</td>
     </tr>`;
   }).join('');
   body.querySelectorAll('tr').forEach(tr=>{
@@ -1242,17 +1410,22 @@ async function exportToExcel(){
   try{
     const sessionRows = [];
     const testRows = [];
+    const hrRows = [];
     for(const a of athletes){
       const sessions = await getSessionEntries(a.id);
       sessions.forEach(e=>sessionRows.push(flattenSessionRow(a.name, e)));
       const tests = await getTestEntries(a.id);
       tests.forEach(e=>testRows.push(flattenTestRow(a.name, e)));
+      const hrHistory = await getRestingHRHistory(a.id);
+      hrHistory.forEach(e=>hrRows.push({ Date: e.date, Athlete: a.name, "Resting HR (bpm)": e.resting_hr }));
     }
     sessionRows.sort((a,b)=> (a.Date||'').localeCompare(b.Date||'') || (a.Athlete||'').localeCompare(b.Athlete||''));
     testRows.sort((a,b)=> (a.Date||'').localeCompare(b.Date||'') || (a.Athlete||'').localeCompare(b.Athlete||''));
+    hrRows.sort((a,b)=> (a.Date||'').localeCompare(b.Date||'') || (a.Athlete||'').localeCompare(b.Athlete||''));
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sessionRows.length ? sessionRows : [{Note:'No sessions logged yet'}]), 'Sessions');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hrRows.length ? hrRows : [{Note:'No resting HR logged yet'}]), 'Resting HR');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(testRows.length ? testRows : [{Note:'No tests logged yet'}]), 'Tests');
     const rosterRows = athletes.map(a=>({ Athlete: a.name, Squad: a.squad || '' }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rosterRows.length ? rosterRows : [{Note:'No athletes registered yet'}]), 'Roster');
@@ -1271,15 +1444,69 @@ async function exportToExcel(){
 // ============================================================
 async function showTab(name){
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab === name));
-  ['session','test','coach'].forEach(t=>{ document.getElementById('tab-'+t).style.display = (t===name) ? '' : 'none'; });
+  ['session','hr','test','coach'].forEach(t=>{ document.getElementById('tab-'+t).style.display = (t===name) ? '' : 'none'; });
   if(name === 'coach'){
     await loadAthletes();
     populateCoachAthleteSelect();
     renderRoster();
+    populateAppliesToSelect(document.getElementById('cf_applies'));
+    renderSessionTypesTable();
     renderFieldSchemaTable();
     const sel = document.getElementById('coachAthleteSelect');
     if(sel.value) loadCoachAthleteView(sel.value);
     else if(athletes.length){ sel.selectedIndex = 0; loadCoachAthleteView(sel.value); }
+  }
+}
+
+function showCoachSubTab(name){
+  document.querySelectorAll('.subtab').forEach(t=>t.classList.toggle('active', t.dataset.coachSub === name));
+  document.getElementById('coachSubOverview').style.display = name === 'overview' ? '' : 'none';
+  document.getElementById('coachSubFields').style.display = name === 'fields' ? '' : 'none';
+  document.getElementById('coachSubAdd').style.display = name === 'add' ? '' : 'none';
+}
+
+// ============================================================
+// resting heart rate
+// ============================================================
+async function saveRestingHR(date, restingHr){
+  const { error } = await supabase.from('daily_vitals')
+    .upsert({ athlete_id: currentUser.id, date, resting_hr: restingHr }, { onConflict: 'athlete_id,date' });
+  return !error;
+}
+async function getRestingHRHistory(athleteId){
+  const { data, error } = await supabase.from('daily_vitals').select('*').eq('athlete_id', athleteId).order('date', {ascending:false});
+  return error || !data ? [] : data;
+}
+async function getLatestRestingHR(athleteId){
+  const history = await getRestingHRHistory(athleteId);
+  return history.length ? history[0] : null;
+}
+
+function renderHrFeed(containerId, entries, limit){
+  const el = document.getElementById(containerId);
+  if(!entries.length){ el.innerHTML = '<p class="empty">Nothing logged yet.</p>'; return; }
+  const shown = limit ? entries.slice(0, limit) : entries;
+  el.innerHTML = shown.map(e=>`
+    <div class="feed-entry">
+      <div class="feed-date">${fmtDate(e.date)}</div>
+      <div class="feed-main"><span class="tag">Resting HR</span></div>
+      <div class="feed-metrics"><div style="font-weight:600;">${e.resting_hr ?? '—'} bpm</div></div>
+    </div>`).join('');
+}
+
+async function onSaveHr(){
+  const statusEl = document.getElementById('hrStatus');
+  const date = document.getElementById('hr_date').value || todayISO();
+  const value = document.getElementById('hr_value').value;
+  if(!value){ statusEl.textContent = 'Enter a value.'; statusEl.className = 'status-msg err'; return; }
+  const ok = await saveRestingHR(date, Number(value));
+  if(ok){
+    statusEl.textContent = 'Saved.'; statusEl.className = 'status-msg ok';
+    document.getElementById('hr_value').value = '';
+    const history = await getRestingHRHistory(currentUser.id);
+    renderHrFeed('myHrFeed', history, 14);
+  } else {
+    statusEl.textContent = 'Could not save — try again.'; statusEl.className = 'status-msg err';
   }
 }
 
@@ -1346,12 +1573,15 @@ async function init(){
   document.getElementById('signOutBtn').addEventListener('click', signOut);
 
   document.querySelectorAll('.tab').forEach(t=> t.addEventListener('click', ()=>showTab(t.dataset.tab)));
+  document.querySelectorAll('.subtab').forEach(t=> t.addEventListener('click', ()=>showCoachSubTab(t.dataset.coachSub)));
   document.getElementById('s_type').addEventListener('change', (e)=> renderDynamicFields(e.target.value));
   document.getElementById('s_rpe').addEventListener('input', (e)=>{ document.getElementById('s_rpe_val').textContent = e.target.value; });
   document.getElementById('s_soreness').addEventListener('input', (e)=>{ document.getElementById('s_soreness_val').textContent = e.target.value; });
   document.getElementById('saveSessionBtn').addEventListener('click', onSaveSession);
+  document.getElementById('saveHrBtn').addEventListener('click', onSaveHr);
   document.getElementById('saveTestBtn').addEventListener('click', onSaveTest);
   document.getElementById('addFieldBtn').addEventListener('click', onAddField);
+  document.getElementById('addSessionTypeBtn').addEventListener('click', onAddSessionType);
   document.getElementById('addPersonBtn').addEventListener('click', onAddPerson);
   document.getElementById('np_role').addEventListener('change', updateAddPersonSquadVisibility);
   updateAddPersonSquadVisibility();
