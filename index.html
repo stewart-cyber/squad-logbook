@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Squad Logbook</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap');
+
+  :root{
+    --ink:#1F2A24;
+    --paper:#EDE6D6;
+    --paper-raised:#F6F1E5;
+    --green:#2F4B3C;
+    --green-dark:#1E332A;
+    --brick:#B5401D;
+    --brass:#C9A227;
+    --line: rgba(31,42,36,0.16);
+    --line-strong: rgba(31,42,36,0.32);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Source Sans 3', sans-serif;
+    font-size:15px;
+    line-height:1.5;
+  }
+  .app{
+    display:flex;
+    min-height:100vh;
+    max-width:1100px;
+    margin:0 auto;
+    position:relative;
+  }
+  .rail{
+    width:180px;
+    flex-shrink:0;
+    padding:28px 0 28px 18px;
+    border-right:1px solid var(--line);
+  }
+  .brand{
+    font-family:'Oswald', sans-serif;
+    font-weight:700;
+    font-size:22px;
+    letter-spacing:0.01em;
+    color:var(--green-dark);
+    margin:0 0 2px 4px;
+    line-height:1.1;
+  }
+  .brand-sub{
+    margin:0 0 26px 4px;
+    font-size:12.5px;
+    color:var(--ink);
+    opacity:0.6;
+  }
+  .tab{
+    display:block;
+    width:100%;
+    text-align:left;
+    background:none;
+    border:none;
+    border-right:3px solid transparent;
+    padding:11px 14px 11px 4px;
+    margin-bottom:2px;
+    font-family:'Source Sans 3', sans-serif;
+    font-size:15px;
+    font-weight:600;
+    color:var(--ink);
+    opacity:0.55;
+    cursor:pointer;
+    border-radius:0;
+  }
+  .tab.active{
+    opacity:1;
+    color:var(--green-dark);
+    border-right-color:var(--brick);
+    background:var(--paper-raised);
+  }
+  .tab:hover:not(.active){opacity:0.85;}
+  .whoami{
+    margin:24px 4px 0 4px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+  }
+  .whoami label{
+    display:block;
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    opacity:0.55;
+    margin-bottom:6px;
+  }
+  .whoami select{
+    width:100%;
+    font-family:'Source Sans 3', sans-serif;
+    font-size:14px;
+    padding:7px 6px;
+    border:1px solid var(--line-strong);
+    background:var(--paper-raised);
+    color:var(--ink);
+    border-radius:2px;
+  }
+  .lock-note{
+    margin:10px 4px 0 4px;
+    font-size:11.5px;
+    opacity:0.5;
+    line-height:1.4;
+  }
+
+  .page{
+    flex:1;
+    padding:32px 40px 60px 36px;
+    min-width:0;
+  }
+  .page-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:22px;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:10px;
+  }
+  .page-head h1{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:26px;
+    margin:0;
+    color:var(--green-dark);
+  }
+  .page-head .date-today{
+    font-size:13px;
+    opacity:0.55;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    padding:22px 24px;
+    margin-bottom:22px;
+  }
+  .card h2{
+    font-family:'Oswald', sans-serif;
+    font-size:16px;
+    font-weight:500;
+    margin:0 0 16px 0;
+    color:var(--green-dark);
+  }
+  .card h3{
+    font-family:'Oswald', sans-serif;
+    font-size:13.5px;
+    font-weight:500;
+    margin:20px 0 10px 0;
+    color:var(--green-dark);
+    opacity:0.85;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:16px 20px;
+  }
+  .field{display:flex; flex-direction:column;}
+  .field.span2{grid-column: 1 / -1;}
+  .field label{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    opacity:0.6;
+    margin-bottom:5px;
+  }
+  input, select, textarea{
+    font-family:'Source Sans 3', sans-serif;
+    font-size:14.5px;
+    padding:8px 9px;
+    border:1px solid var(--line-strong);
+    background:#fff;
+    color:var(--ink);
+    border-radius:2px;
+  }
+  textarea{resize:vertical; min-height:60px;}
+  input:focus, select:focus, textarea:focus{
+    outline:2px solid var(--green);
+    outline-offset:1px;
+  }
+
+  .scale-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .scale-row input[type=range]{flex:1; accent-color:var(--brick);}
+  .scale-val{
+    font-family:'Oswald', sans-serif;
+    font-size:20px;
+    font-weight:600;
+    width:28px;
+    text-align:center;
+    color:var(--brick);
+  }
+
+  .btn{
+    font-family:'Source Sans 3', sans-serif;
+    font-weight:600;
+    font-size:14.5px;
+    padding:10px 22px;
+    background:var(--green-dark);
+    color:var(--paper-raised);
+    border:none;
+    cursor:pointer;
+    border-radius:2px;
+  }
+  .btn:hover{background:var(--green);}
+  .btn.secondary{
+    background:none;
+    color:var(--green-dark);
+    border:1px solid var(--line-strong);
+  }
+  .btn.secondary:hover{background:var(--line);}
+  .btn.small{
+    padding:6px 12px;
+    font-size:13px;
+  }
+  .btn.danger{
+    background:none;
+    color:var(--brick);
+    border:1px solid var(--brick);
+  }
+  .btn.danger:hover{background:rgba(181,64,29,0.1);}
+
+  .status-msg{
+    font-size:13px;
+    margin-top:10px;
+    min-height:16px;
+  }
+  .status-msg.ok{color:var(--green-dark);}
+  .status-msg.err{color:var(--brick);}
+
+  .feed-entry{
+    display:grid;
+    grid-template-columns: 78px 1fr auto;
+    gap:14px;
+    padding:12px 0;
+    border-bottom:1px solid var(--line);
+    align-items:start;
+  }
+  .feed-entry:last-child{border-bottom:none;}
+  .feed-date{
+    font-family:'Oswald', sans-serif;
+    font-size:13px;
+    font-weight:600;
+    opacity:0.75;
+    padding-top:2px;
+  }
+  .feed-main .who{font-weight:600; margin-right:6px;}
+  .feed-main .tag{
+    display:inline-block;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    padding:1px 7px;
+    border:1px solid var(--line-strong);
+    border-radius:10px;
+    margin-right:6px;
+    opacity:0.75;
+  }
+  .feed-main .notes{
+    margin-top:4px;
+    font-size:13.5px;
+    opacity:0.85;
+  }
+  .feed-main .details-line{
+    margin-top:5px;
+    font-size:12.5px;
+    opacity:0.75;
+    font-variant-numeric: tabular-nums;
+  }
+  .feed-metrics{
+    text-align:right;
+    font-family:'Oswald', sans-serif;
+    font-size:13px;
+    white-space:nowrap;
+  }
+  .feed-metrics .rpe-hi{color:var(--brick); font-weight:600;}
+  .feed-metrics .rpe-lo{color:var(--green-dark);}
+
+  .empty{
+    opacity:0.55;
+    font-size:14px;
+    padding:10px 0;
+  }
+
+  .roster-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13.5px;
+  }
+  .roster-table th{
+    text-align:left;
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    opacity:0.55;
+    padding:0 10px 8px 0;
+    border-bottom:1px solid var(--line-strong);
+  }
+  .roster-table td{
+    padding:9px 10px 9px 0;
+    border-bottom:1px solid var(--line);
+    vertical-align:middle;
+  }
+  .roster-table tr:hover{background:rgba(31,42,36,0.04); cursor:pointer;}
+  .flag-dot{
+    display:inline-block;
+    width:9px; height:9px;
+    border-radius:50%;
+    margin-right:6px;
+  }
+  .flag-ok{background:var(--green);}
+  .flag-warn{background:var(--brass);}
+  .flag-stale{background:var(--brick);}
+
+  .fields-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13.5px;
+    margin-bottom:14px;
+  }
+  .fields-table th{
+    text-align:left;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    opacity:0.55;
+    padding:0 10px 6px 0;
+    border-bottom:1px solid var(--line-strong);
+  }
+  .fields-table td{
+    padding:7px 10px 7px 0;
+    border-bottom:1px solid var(--line);
+  }
+
+  .chart-wrap{height:220px; margin-top:6px;}
+
+  .two-col{
+    display:grid;
+    grid-template-columns: 1.1fr 1.4fr;
+    gap:22px;
+  }
+
+  .locked-msg{
+    padding:40px 10px;
+    text-align:center;
+    opacity:0.6;
+    font-size:14.5px;
+  }
+
+  /* ---- Lock modal ---- */
+  .modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(31,42,36,0.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+  }
+  .modal-box{
+    background:var(--paper-raised);
+    border:1px solid var(--line-strong);
+    padding:28px 28px 22px;
+    width:320px;
+    max-width:90vw;
+  }
+  .modal-box h3{
+    font-family:'Oswald', sans-serif;
+    font-size:18px;
+    font-weight:600;
+    margin:0 0 4px 0;
+    color:var(--green-dark);
+  }
+  .modal-box p.sub{
+    font-size:13px;
+    opacity:0.65;
+    margin:0 0 16px 0;
+  }
+  .modal-box input{
+    width:100%;
+    margin-bottom:10px;
+    letter-spacing:0.15em;
+    font-size:16px;
+  }
+  .modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    margin-top:6px;
+  }
+  .modal-err{
+    color:var(--brick);
+    font-size:12.5px;
+    min-height:16px;
+    margin-bottom:4px;
+  }
+
+  @media(max-width:820px){
+    .app{flex-direction:column;}
+    .rail{width:100%; border-right:none; border-bottom:1px solid var(--line); padding:18px;}
+    .page{padding:24px 20px 50px;}
+    .grid{grid-template-columns:1fr;}
+    .two-col{grid-template-columns:1fr;}
+    .feed-entry{grid-template-columns:60px 1fr; }
+    .feed-metrics{grid-column:1/-1; text-align:left; margin-top:4px;}
+  }
+</style>
+
+  /* ---- login screen ---- */
+  .login-wrap{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--paper);
+  }
+  .login-box{
+    background:var(--paper-raised);
+    border:1px solid var(--line-strong);
+    padding:36px 34px 30px;
+    width:340px;
+    max-width:90vw;
+  }
+  .login-box .brand{ margin-bottom:2px; }
+  .login-box .brand-sub{ margin-bottom:24px; }
+  .login-box label{
+    display:block;
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    opacity:0.6;
+    margin:14px 0 6px 0;
+  }
+  .login-box input{ width:100%; }
+  .login-box .btn{ width:100%; margin-top:18px; }
+  .login-err{
+    color:var(--brick);
+    font-size:13px;
+    min-height:16px;
+    margin-top:10px;
+  }
+
+  /* ---- signed-in header in rail ---- */
+  .whoami{
+    margin:24px 4px 0 4px;
+    padding-top:16px;
+    border-top:1px solid var(--line);
+  }
+  .whoami .who-name{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:15px;
+    color:var(--green-dark);
+  }
+  .whoami .who-role{
+    font-size:12px;
+    opacity:0.6;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    margin-bottom:10px;
+  }
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="login-wrap">
+  <div class="login-box">
+    <p class="brand">Squad Logbook</p>
+    <p class="brand-sub">Sign in to log or review training</p>
+    <label for="login_email">Username</label>
+    <input type="text" id="login_email" autocomplete="username" placeholder="e.g. stewart.junior">
+    <label for="login_password">Password</label>
+    <input type="password" id="login_password" autocomplete="current-password">
+    <button class="btn" id="loginBtn">Log in</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<div class="app" id="appShell" style="display:none;">
+  <nav class="rail">
+    <p class="brand">Squad Logbook</p>
+    <p class="brand-sub">Daily training &amp; wellness</p>
+    <button class="tab active" data-tab="session" id="navSession">Log a session</button>
+    <button class="tab" data-tab="test" id="navTest">Log a test</button>
+    <button class="tab" data-tab="coach" id="navCoach">Coach view</button>
+
+    <div class="whoami">
+      <div class="who-name" id="whoName"></div>
+      <div class="who-role" id="whoRole"></div>
+      <button class="btn secondary small" id="signOutBtn" style="width:100%;">Sign out</button>
+    </div>
+  </nav>
+
+  <main class="page">
+
+    <!-- SESSION TAB -->
+    <section id="tab-session">
+      <div class="page-head">
+        <h1>Log a session</h1>
+        <span class="date-today" id="todayLabel"></span>
+      </div>
+
+      <div class="card">
+        <h2>Today's entry</h2>
+        <div class="grid">
+          <div class="field">
+            <label for="s_date">Date</label>
+            <input type="date" id="s_date">
+          </div>
+          <div class="field">
+            <label for="s_squad">Squad</label>
+            <select id="s_squad">
+              <option>J14</option><option>J15</option><option>J16</option><option>J18</option><option>Trialist</option>
+            </select>
+          </div>
+          <div class="field span2">
+            <label for="s_type">Session type</label>
+            <select id="s_type">
+              <option>Water</option><option>Gym</option><option>Erg</option>
+              <option>Cross-training</option><option>Rest day</option>
+            </select>
+          </div>
+        </div>
+
+        <h3 id="dynamicFieldsTitle">Session details</h3>
+        <div class="grid" id="dynamicFields"></div>
+
+        <h3>Wellness</h3>
+        <div class="grid">
+          <div class="field span2">
+            <label for="s_rpe">Session RPE (how hard it felt, 1&ndash;10)</label>
+            <div class="scale-row">
+              <input type="range" id="s_rpe" min="1" max="10" value="5">
+              <span class="scale-val" id="s_rpe_val">5</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="s_sleep">Sleep last night (hrs)</label>
+            <input type="number" id="s_sleep" min="0" max="14" step="0.5" placeholder="e.g. 8">
+          </div>
+          <div class="field">
+            <label for="s_soreness">Muscle soreness (1&ndash;5)</label>
+            <div class="scale-row">
+              <input type="range" id="s_soreness" min="1" max="5" value="2">
+              <span class="scale-val" id="s_soreness_val">2</span>
+            </div>
+          </div>
+          <div class="field span2">
+            <label for="s_mood">How are you feeling? (one word or phrase)</label>
+            <input type="text" id="s_mood" placeholder="e.g. fresh, flat, sore shoulders, buzzing">
+          </div>
+          <div class="field span2">
+            <label for="s_notes">Notes for your coach</label>
+            <textarea id="s_notes" placeholder="Anything on your mind about the session, technique, life stuff affecting training..."></textarea>
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn" id="saveSessionBtn">Save entry</button>
+          <div class="status-msg" id="sessionStatus"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Your recent entries</h2>
+        <div id="myFeed"><p class="empty">Nothing logged yet.</p></div>
+      </div>
+    </section>
+
+    <!-- TEST TAB -->
+    <section id="tab-test" style="display:none;">
+      <div class="page-head"><h1>Log a test result</h1></div>
+
+      <div class="card">
+        <h2>New test entry</h2>
+        <div class="grid">
+          <div class="field">
+            <label for="t_date">Date</label>
+            <input type="date" id="t_date">
+          </div>
+          <div class="field">
+            <label for="t_type">Test type</label>
+            <select id="t_type">
+              <option>2km erg time trial</option>
+              <option>5km erg time trial</option>
+              <option>6km erg time trial</option>
+              <option>Lactate — Anchor check</option>
+              <option>Lactate — Full profile</option>
+              <option>Resting heart rate</option>
+              <option>Other fitness test</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="t_metric_label">Result label</label>
+            <input type="text" id="t_metric_label" placeholder="e.g. Time, Avg watts, 4mmol pace">
+          </div>
+          <div class="field">
+            <label for="t_metric_value">Result value</label>
+            <input type="text" id="t_metric_value" placeholder="e.g. 7:42.3 or 245W">
+          </div>
+          <div class="field span2">
+            <label for="t_notes">Conditions / notes</label>
+            <textarea id="t_notes" placeholder="Erg model, damper setting, how it felt, weather if on water..."></textarea>
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn" id="saveTestBtn">Save test</button>
+          <div class="status-msg" id="testStatus"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Your test history</h2>
+        <div id="myTestFeed"><p class="empty">No tests logged yet.</p></div>
+      </div>
+    </section>
+
+    <!-- COACH TAB -->
+    <section id="tab-coach" style="display:none;">
+      <div class="page-head"><h1>Coach view</h1></div>
+
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:baseline;">
+          <h2 style="margin-bottom:0;">Squad roster — last check-in</h2>
+          <button class="btn secondary small" id="exportExcelBtn">Export to Excel</button>
+        </div>
+        <div class="status-msg" id="exportStatus"></div>
+        <table class="roster-table" id="rosterTable">
+          <thead>
+            <tr><th></th><th>Athlete</th><th>Squad</th><th>Last entry</th><th>Avg RPE (7d)</th><th>Avg sleep (7d)</th></tr>
+          </thead>
+          <tbody id="rosterBody"></tbody>
+        </table>
+        <p class="empty" id="rosterEmpty" style="display:none;">No athletes registered yet.</p>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <h2>Load / wellness trend</h2>
+          <label style="font-size:12px; text-transform:uppercase; letter-spacing:0.05em; opacity:0.6;">Athlete</label>
+          <select id="coachAthleteSelect" style="width:100%; margin-top:6px;"></select>
+          <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+        </div>
+
+        <div class="card">
+          <h2 id="coachFeedTitle">Full log</h2>
+          <div id="coachFeed"><p class="empty">Select an athlete.</p></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Manage session fields</h2>
+        <p style="font-size:13px; opacity:0.7; margin-top:-8px;">Every field on the session form lives here, including the original heart rate, split, rate, distance, time, and pieces fields. Rename any of them, change their type or unit, move them to a different session type, or remove them.</p>
+        <table class="fields-table" id="customFieldsTable">
+          <thead><tr><th>Field</th><th>Type</th><th>Unit</th><th>Applies to</th><th></th></tr></thead>
+          <tbody id="customFieldsBody"></tbody>
+        </table>
+        <div class="grid">
+          <div class="field">
+            <label for="cf_label">Field name</label>
+            <input type="text" id="cf_label" placeholder="e.g. Wind direction">
+          </div>
+          <div class="field">
+            <label for="cf_type">Field type</label>
+            <select id="cf_type"><option value="text">Text</option><option value="number">Number</option></select>
+          </div>
+          <div class="field">
+            <label for="cf_unit">Unit (optional)</label>
+            <input type="text" id="cf_unit" placeholder="e.g. bpm, kg">
+          </div>
+          <div class="field">
+            <label for="cf_applies">Applies to</label>
+            <select id="cf_applies">
+              <option value="All">All session types</option>
+              <option value="Water">Water</option>
+              <option value="Gym">Gym</option>
+              <option value="Erg">Erg</option>
+              <option value="Cross-training">Cross-training</option>
+              <option value="Rest day">Rest day</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn secondary small" id="addFieldBtn">Add field</button>
+          <div class="status-msg" id="fieldStatus"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Coach admin</h2>
+        <p style="font-size:13px; opacity:0.7; margin-top:-8px;">Adding a new athlete or coach isn't done from this page — it's a two-step process in the Supabase dashboard so that account credentials never pass through this website's own code. See ADD_PEOPLE.md for the exact steps.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+(function(){
+
+// ============================================================
+// SUPABASE SETUP — fill these in with your project's own values
+// (Project Settings > API in your Supabase dashboard).
+// ============================================================
+const SUPABASE_URL = "https://bdkuejwvqnptetoagekf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJka3Vland2cW5wdGV0b2FnZWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1MjQ1ODgsImV4cCI6MjEwNDEwMDU4OH0.onceqiqzUsTAQQ0xPr90vjBxRuZMG-GCKndE-8j8wVw";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Athletes log in with a plain "username" (e.g. stewart.junior) rather than
+// a real email address. Supabase Auth requires an email field under the
+// hood, so usernames are stored as <username>@LOGIN_DOMAIN — invisible to
+// the athlete, who only ever sees and types their username.
+const LOGIN_DOMAIN = "squad-logbook.local";
+
+let currentUser = null;   // { id, name, role, squad }
+let athletes = [];        // [{id, name, squad}] — role:'athlete' profiles, coach-visible only
+let fieldSchema = [];     // [{id,label,type,unit,session_type}]
+
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(iso){
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString('en-GB', {day:'2-digit', month:'short'});
+}
+function daysAgo(iso){
+  const d = new Date(iso + "T00:00:00");
+  const now = new Date(); now.setHours(0,0,0,0);
+  return Math.round((now - d) / 86400000);
+}
+function escapeHtml(s){
+  if(s === undefined || s === null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+async function attemptLogin(){
+  const errEl = document.getElementById('loginErr');
+  errEl.textContent = '';
+  const username = document.getElementById('login_email').value.trim();
+  const password = document.getElementById('login_password').value;
+  if(!username || !password){ errEl.textContent = 'Enter your username and password.'; return; }
+  const email = username.includes('@') ? username : `${username}@${LOGIN_DOMAIN}`;
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if(error){ errEl.textContent = 'Incorrect username or password.'; return; }
+  await loadCurrentUserAndStart();
+}
+
+async function loadCurrentUserAndStart(){
+  const { data: userData } = await supabase.auth.getUser();
+  if(!userData || !userData.user){ showLogin(); return; }
+  const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', userData.user.id).maybeSingle();
+  if(error || !profile){
+    document.getElementById('loginErr').textContent = 'Your account has no profile set up yet — ask your coach to finish adding you.';
+    await supabase.auth.signOut();
+    showLogin();
+    return;
+  }
+  currentUser = { id: profile.id, name: profile.name, role: profile.role, squad: profile.squad };
+  showApp();
+}
+
+function showLogin(){
+  document.getElementById('loginScreen').style.display = '';
+  document.getElementById('appShell').style.display = 'none';
+}
+
+async function showApp(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appShell').style.display = '';
+  document.getElementById('whoName').textContent = currentUser.name;
+  document.getElementById('whoRole').textContent = currentUser.role === 'coach' ? 'Coach' : (currentUser.squad || 'Athlete');
+
+  const isCoach = currentUser.role === 'coach';
+  document.getElementById('navSession').style.display = isCoach ? 'none' : '';
+  document.getElementById('navTest').style.display = isCoach ? 'none' : '';
+  document.getElementById('navCoach').style.display = isCoach ? '' : 'none';
+
+  await loadFieldSchema();
+
+  if(isCoach){
+    showTab('coach');
+  } else {
+    document.getElementById('s_date').value = todayISO();
+    document.getElementById('t_date').value = todayISO();
+    document.getElementById('todayLabel').textContent = new Date().toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'});
+    renderDynamicFields(document.getElementById('s_type').value);
+    showTab('session');
+    refreshMyFeeds();
+  }
+}
+
+async function signOut(){
+  await supabase.auth.signOut();
+  currentUser = null;
+  document.getElementById('login_email').value = '';
+  document.getElementById('login_password').value = '';
+  showLogin();
+}
+
+// ============================================================
+// field schema (coach-editable session form fields)
+// ============================================================
+const APPLIES_TO_OPTIONS = ['All','Water','Gym','Erg','Cross-training','Rest day'];
+
+async function loadFieldSchema(){
+  const { data, error } = await supabase.from('field_schema').select('*').order('session_type');
+  fieldSchema = error || !data ? [] : data;
+}
+
+function fieldsForType(type){
+  return fieldSchema.filter(f=>f.session_type === type || f.session_type === 'All');
+}
+
+function renderDynamicFields(type){
+  const container = document.getElementById('dynamicFields');
+  const fields = fieldsForType(type);
+  document.getElementById('dynamicFieldsTitle').style.display = fields.length ? '' : 'none';
+  if(!fields.length){ container.innerHTML = ''; return; }
+  container.innerHTML = fields.map(f=>{
+    const inputType = f.type === 'number' ? 'number' : 'text';
+    const unitLabel = f.unit ? ` (${escapeHtml(f.unit)})` : '';
+    return `<div class="field">
+      <label for="dyn_${f.id}">${escapeHtml(f.label)}${unitLabel}</label>
+      <input type="${inputType}" id="dyn_${f.id}" data-label="${escapeHtml(f.label)}" data-unit="${escapeHtml(f.unit||'')}">
+    </div>`;
+  }).join('');
+}
+
+function collectDynamicDetails(){
+  const container = document.getElementById('dynamicFields');
+  const inputs = container.querySelectorAll('input');
+  const details = [];
+  inputs.forEach(inp=>{
+    const val = inp.value.trim();
+    if(val === '') return;
+    details.push({ label: inp.dataset.label, unit: inp.dataset.unit || '', value: val });
+  });
+  return details;
+}
+
+function renderFieldSchemaTable(){
+  const body = document.getElementById('customFieldsBody');
+  if(!fieldSchema.length){
+    body.innerHTML = '<tr><td colspan="5" class="empty">No fields defined. Add one below.</td></tr>';
+    return;
+  }
+  body.innerHTML = fieldSchema.map(f=>`
+    <tr data-id="${f.id}">
+      <td><input type="text" class="fs-label" value="${escapeHtml(f.label)}" style="width:100%;"></td>
+      <td><select class="fs-type">
+        <option value="text" ${f.type==='text'?'selected':''}>Text</option>
+        <option value="number" ${f.type==='number'?'selected':''}>Number</option>
+      </select></td>
+      <td><input type="text" class="fs-unit" value="${escapeHtml(f.unit || '')}" style="width:64px;"></td>
+      <td><select class="fs-applies">
+        ${APPLIES_TO_OPTIONS.map(t=>`<option value="${t}" ${f.session_type===t?'selected':''}>${t==='All' ? 'All session types' : t}</option>`).join('')}
+      </select></td>
+      <td style="white-space:nowrap;">
+        <button class="btn secondary small" data-save="${f.id}">Save</button>
+        <button class="btn danger small" data-del="${f.id}">Remove</button>
+      </td>
+    </tr>`).join('');
+
+  body.querySelectorAll('button[data-save]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const tr = btn.closest('tr');
+      const id = btn.dataset.save;
+      const label = tr.querySelector('.fs-label').value.trim();
+      const type = tr.querySelector('.fs-type').value;
+      const unit = tr.querySelector('.fs-unit').value.trim();
+      const session_type = tr.querySelector('.fs-applies').value;
+      const { error } = await supabase.from('field_schema').update({ label, type, unit, session_type }).eq('id', id);
+      const statusEl = document.getElementById('fieldStatus');
+      if(error){ statusEl.textContent = 'Could not save — try again.'; statusEl.className='status-msg err'; return; }
+      statusEl.textContent = 'Field updated.'; statusEl.className = 'status-msg ok';
+      await loadFieldSchema();
+      renderFieldSchemaTable();
+    });
+  });
+  body.querySelectorAll('button[data-del]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const f = fieldSchema.find(x=>x.id === btn.dataset.del);
+      if(!f) return;
+      if(!confirm(`Remove "${f.label}"? It will disappear from the form — anything already logged keeps its recorded value.`)) return;
+      await supabase.from('field_schema').delete().eq('id', f.id);
+      await loadFieldSchema();
+      renderFieldSchemaTable();
+    });
+  });
+}
+
+async function onAddField(){
+  const label = document.getElementById('cf_label').value.trim();
+  const type = document.getElementById('cf_type').value;
+  const unit = document.getElementById('cf_unit').value.trim();
+  const session_type = document.getElementById('cf_applies').value;
+  const statusEl = document.getElementById('fieldStatus');
+  if(!label){ statusEl.textContent = 'Give the field a name.'; statusEl.className='status-msg err'; return; }
+  const id = 'f_' + Date.now();
+  const { error } = await supabase.from('field_schema').insert({ id, label, type, unit, session_type });
+  if(error){ statusEl.textContent = 'Could not add field.'; statusEl.className='status-msg err'; return; }
+  document.getElementById('cf_label').value = '';
+  document.getElementById('cf_unit').value = '';
+  statusEl.textContent = 'Field added.'; statusEl.className = 'status-msg ok';
+  await loadFieldSchema();
+  renderFieldSchemaTable();
+}
+
+// ============================================================
+// entries
+// ============================================================
+async function saveSessionEntry(entry){
+  const { error } = await supabase.from('session_entries').insert({
+    athlete_id: currentUser.id,
+    date: entry.date,
+    squad: entry.squad,
+    session_type: entry.type,
+    details: entry.details,
+    rpe: entry.rpe,
+    sleep: entry.sleep || null,
+    soreness: entry.soreness,
+    mood: entry.mood,
+    notes: entry.notes
+  });
+  return !error;
+}
+async function saveTestEntry(entry){
+  const { error } = await supabase.from('test_entries').insert({
+    athlete_id: currentUser.id,
+    date: entry.date,
+    test_type: entry.testType,
+    metric_label: entry.metricLabel,
+    metric_value: entry.metricValue,
+    notes: entry.notes
+  });
+  return !error;
+}
+async function getSessionEntries(athleteId){
+  const { data, error } = await supabase.from('session_entries').select('*').eq('athlete_id', athleteId).order('date', {ascending:false});
+  if(error || !data) return [];
+  return data.map(r=>({ ...r, type: r.session_type }));
+}
+async function getTestEntries(athleteId){
+  const { data, error } = await supabase.from('test_entries').select('*').eq('athlete_id', athleteId).order('date', {ascending:false});
+  if(error || !data) return [];
+  return data.map(r=>({ ...r, testType: r.test_type, metricLabel: r.metric_label, metricValue: r.metric_value }));
+}
+
+// ============================================================
+// rendering feeds
+// ============================================================
+function detailsLine(details){
+  if(!details || !details.length) return '';
+  return details.map(d=>`${d.label} ${d.value}${d.unit?d.unit:''}`).join(' · ');
+}
+
+function renderSessionFeed(containerId, entries, limit, showName){
+  const el = document.getElementById(containerId);
+  if(!entries.length){ el.innerHTML = '<p class="empty">Nothing logged yet.</p>'; return; }
+  const shown = limit ? entries.slice(0, limit) : entries;
+  el.innerHTML = shown.map(e=>{
+    const rpeClass = e.rpe >= 7 ? 'rpe-hi' : 'rpe-lo';
+    return `<div class="feed-entry">
+      <div class="feed-date">${fmtDate(e.date)}</div>
+      <div class="feed-main">
+        ${showName ? `<span class="who">${escapeHtml(showName)}</span>` : ''}
+        <span class="tag">${escapeHtml(e.type)}</span>
+        <span class="tag">${escapeHtml(e.squad)}</span>
+        ${e.details && e.details.length ? `<div class="details-line">${escapeHtml(detailsLine(e.details))}</div>` : ''}
+        ${e.mood ? `<div class="notes"><em>Feeling:</em> ${escapeHtml(e.mood)}</div>` : ''}
+        ${e.notes ? `<div class="notes">${escapeHtml(e.notes)}</div>` : ''}
+      </div>
+      <div class="feed-metrics">
+        <div class="${rpeClass}">RPE ${e.rpe}</div>
+        <div>${e.sleep ? 'Sleep ' + e.sleep + 'h' : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderTestFeed(containerId, entries){
+  const el = document.getElementById(containerId);
+  if(!entries.length){ el.innerHTML = '<p class="empty">No tests logged yet.</p>'; return; }
+  el.innerHTML = entries.map(e=>`
+    <div class="feed-entry">
+      <div class="feed-date">${fmtDate(e.date)}</div>
+      <div class="feed-main">
+        <span class="tag">${escapeHtml(e.testType)}</span>
+        ${e.notes ? `<div class="notes">${escapeHtml(e.notes)}</div>` : ''}
+      </div>
+      <div class="feed-metrics">
+        <div>${escapeHtml(e.metricLabel || '')}</div>
+        <div style="font-weight:600;">${escapeHtml(e.metricValue || '')}</div>
+      </div>
+    </div>`).join('');
+}
+
+async function refreshMyFeeds(){
+  if(!currentUser) return;
+  const sessions = await getSessionEntries(currentUser.id);
+  renderSessionFeed('myFeed', sessions, 10, null);
+  const tests = await getTestEntries(currentUser.id);
+  renderTestFeed('myTestFeed', tests);
+}
+
+// ============================================================
+// coach roster + trend + full log
+// ============================================================
+async function loadAthletes(){
+  const { data, error } = await supabase.from('profiles').select('*').eq('role', 'athlete').order('name');
+  athletes = error || !data ? [] : data;
+}
+
+function populateCoachAthleteSelect(){
+  const sel = document.getElementById('coachAthleteSelect');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  athletes.forEach(a=>{
+    const o = document.createElement('option'); o.value = a.id; o.textContent = a.name;
+    sel.appendChild(o);
+  });
+  if(athletes.some(a=>a.id === prev)) sel.value = prev;
+}
+
+async function renderRoster(){
+  const body = document.getElementById('rosterBody');
+  const emptyMsg = document.getElementById('rosterEmpty');
+  if(!athletes.length){ body.innerHTML = ''; emptyMsg.style.display = 'block'; return; }
+  emptyMsg.style.display = 'none';
+  const rows = [];
+  for(const a of athletes){
+    const entries = await getSessionEntries(a.id);
+    if(!entries.length){ rows.push({name:a.name, id:a.id, squad:a.squad||'—', lastDate:null, avgRpe:null, avgSleep:null, gap:999}); continue; }
+    const last = entries[0];
+    const gap = daysAgo(last.date);
+    const last7 = entries.filter(e => daysAgo(e.date) <= 7);
+    const avgRpe = last7.length ? (last7.reduce((s,e)=>s+(Number(e.rpe)||0),0)/last7.length) : null;
+    const sleepVals = last7.filter(e=>e.sleep).map(e=>Number(e.sleep));
+    const avgSleep = sleepVals.length ? (sleepVals.reduce((x,y)=>x+y,0)/sleepVals.length) : null;
+    rows.push({name:a.name, id:a.id, squad:last.squad || a.squad || '—', lastDate:last.date, avgRpe, avgSleep, gap});
+  }
+  rows.sort((a,b)=> a.gap - b.gap);
+  body.innerHTML = rows.map(r=>{
+    let flagClass = 'flag-ok';
+    if(r.gap >= 5) flagClass = 'flag-stale'; else if(r.gap >= 3) flagClass = 'flag-warn';
+    return `<tr data-id="${r.id}">
+      <td><span class="flag-dot ${flagClass}"></span></td>
+      <td>${escapeHtml(r.name)}</td>
+      <td>${escapeHtml(r.squad)}</td>
+      <td>${r.lastDate ? fmtDate(r.lastDate) + ' (' + r.gap + 'd ago)' : 'never'}</td>
+      <td>${r.avgRpe !== null ? r.avgRpe.toFixed(1) : '—'}</td>
+      <td>${r.avgSleep !== null ? r.avgSleep.toFixed(1) + 'h' : '—'}</td>
+    </tr>`;
+  }).join('');
+  body.querySelectorAll('tr').forEach(tr=>{
+    tr.addEventListener('click', ()=>{
+      const id = tr.getAttribute('data-id');
+      document.getElementById('coachAthleteSelect').value = id;
+      loadCoachAthleteView(id);
+    });
+  });
+}
+
+let trendChartInstance = null;
+async function loadCoachAthleteView(athleteId){
+  if(!athleteId) return;
+  const athlete = athletes.find(a=>a.id === athleteId);
+  document.getElementById('coachFeedTitle').textContent = `${athlete ? athlete.name : 'Athlete'} — full log`;
+  const [sessions, tests] = await Promise.all([ getSessionEntries(athleteId), getTestEntries(athleteId) ]);
+  const merged = [ ...sessions.map(e=>({...e, _kind:'session'})), ...tests.map(e=>({...e, _kind:'test'})) ]
+    .sort((a,b)=> new Date(b.date) - new Date(a.date));
+
+  const el = document.getElementById('coachFeed');
+  if(!merged.length){ el.innerHTML = '<p class="empty">No entries for this athlete yet.</p>'; }
+  else {
+    el.innerHTML = merged.slice(0, 25).map(e=>{
+      if(e._kind === 'session'){
+        const rpeClass = e.rpe >= 7 ? 'rpe-hi' : 'rpe-lo';
+        return `<div class="feed-entry">
+          <div class="feed-date">${fmtDate(e.date)}</div>
+          <div class="feed-main">
+            <span class="tag">${escapeHtml(e.type)}</span>
+            ${e.details && e.details.length ? `<div class="details-line">${escapeHtml(detailsLine(e.details))}</div>` : ''}
+            ${e.mood ? `<div class="notes"><em>Feeling:</em> ${escapeHtml(e.mood)}</div>` : ''}
+            ${e.notes ? `<div class="notes">${escapeHtml(e.notes)}</div>` : ''}
+          </div>
+          <div class="feed-metrics"><div class="${rpeClass}">RPE ${e.rpe}</div></div>
+        </div>`;
+      } else {
+        return `<div class="feed-entry">
+          <div class="feed-date">${fmtDate(e.date)}</div>
+          <div class="feed-main">
+            <span class="tag">${escapeHtml(e.testType)}</span>
+            ${e.notes ? `<div class="notes">${escapeHtml(e.notes)}</div>` : ''}
+          </div>
+          <div class="feed-metrics"><div style="font-weight:600;">${escapeHtml(e.metricValue || '')}</div></div>
+        </div>`;
+      }
+    }).join('');
+  }
+
+  const chronological = sessions.slice().sort((a,b)=> new Date(a.date) - new Date(b.date)).slice(-20);
+  const labels = chronological.map(e=>fmtDate(e.date));
+  const rpeData = chronological.map(e=>Number(e.rpe)||null);
+  const sleepData = chronological.map(e=>e.sleep ? Number(e.sleep) : null);
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  if(trendChartInstance) trendChartInstance.destroy();
+  trendChartInstance = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[
+      { label:'Session RPE', data:rpeData, borderColor:'#B5401D', backgroundColor:'#B5401D', yAxisID:'y', tension:0.25, spanGaps:true },
+      { label:'Sleep (hrs)', data:sleepData, borderColor:'#2F4B3C', backgroundColor:'#2F4B3C', yAxisID:'y1', tension:0.25, spanGaps:true }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{font:{family:"'Source Sans 3'"}, boxWidth:12} } },
+      scales:{
+        y:{ min:0, max:10, position:'left', title:{display:true, text:'RPE'} },
+        y1:{ min:0, max:12, position:'right', grid:{drawOnChartArea:false}, title:{display:true, text:'Sleep (h)'} }
+      }
+    }
+  });
+}
+
+// ============================================================
+// excel export
+// ============================================================
+function flattenSessionRow(name, e){
+  const row = {
+    Date: e.date, Athlete: name, Squad: e.squad, "Session type": e.type,
+    "Session RPE": e.rpe, "Sleep (hrs)": e.sleep, "Soreness (1-5)": e.soreness,
+    Feeling: e.mood, Notes: e.notes
+  };
+  (e.details || []).forEach(d=>{
+    const col = d.unit ? `${d.label} (${d.unit})` : d.label;
+    row[col] = d.value;
+  });
+  return row;
+}
+function flattenTestRow(name, e){
+  return {
+    Date: e.date, Athlete: name, "Test type": e.testType,
+    "Result label": e.metricLabel, "Result value": e.metricValue, Notes: e.notes
+  };
+}
+
+async function exportToExcel(){
+  const statusEl = document.getElementById('exportStatus');
+  statusEl.textContent = 'Building export...';
+  statusEl.className = 'status-msg ok';
+  try{
+    const sessionRows = [];
+    const testRows = [];
+    for(const a of athletes){
+      const sessions = await getSessionEntries(a.id);
+      sessions.forEach(e=>sessionRows.push(flattenSessionRow(a.name, e)));
+      const tests = await getTestEntries(a.id);
+      tests.forEach(e=>testRows.push(flattenTestRow(a.name, e)));
+    }
+    sessionRows.sort((a,b)=> (a.Date||'').localeCompare(b.Date||'') || (a.Athlete||'').localeCompare(b.Athlete||''));
+    testRows.sort((a,b)=> (a.Date||'').localeCompare(b.Date||'') || (a.Athlete||'').localeCompare(b.Athlete||''));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sessionRows.length ? sessionRows : [{Note:'No sessions logged yet'}]), 'Sessions');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(testRows.length ? testRows : [{Note:'No tests logged yet'}]), 'Tests');
+    const rosterRows = athletes.map(a=>({ Athlete: a.name, Squad: a.squad || '' }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rosterRows.length ? rosterRows : [{Note:'No athletes registered yet'}]), 'Roster');
+
+    XLSX.writeFile(wb, `squad-logbook-${todayISO()}.xlsx`);
+    statusEl.textContent = 'Downloaded.';
+  }catch(e){
+    console.error(e);
+    statusEl.textContent = 'Export failed — try again.';
+    statusEl.className = 'status-msg err';
+  }
+}
+
+// ============================================================
+// tabs
+// ============================================================
+async function showTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab === name));
+  ['session','test','coach'].forEach(t=>{ document.getElementById('tab-'+t).style.display = (t===name) ? '' : 'none'; });
+  if(name === 'coach'){
+    await loadAthletes();
+    populateCoachAthleteSelect();
+    renderRoster();
+    renderFieldSchemaTable();
+    const sel = document.getElementById('coachAthleteSelect');
+    if(sel.value) loadCoachAthleteView(sel.value);
+    else if(athletes.length){ sel.selectedIndex = 0; loadCoachAthleteView(sel.value); }
+  }
+}
+
+// ============================================================
+// wiring
+// ============================================================
+async function onSaveSession(){
+  const statusEl = document.getElementById('sessionStatus');
+  const entry = {
+    date: document.getElementById('s_date').value || todayISO(),
+    squad: document.getElementById('s_squad').value,
+    type: document.getElementById('s_type').value,
+    details: collectDynamicDetails(),
+    rpe: Number(document.getElementById('s_rpe').value),
+    sleep: document.getElementById('s_sleep').value,
+    soreness: Number(document.getElementById('s_soreness').value),
+    mood: document.getElementById('s_mood').value.trim(),
+    notes: document.getElementById('s_notes').value.trim()
+  };
+  const ok = await saveSessionEntry(entry);
+  if(ok){
+    statusEl.textContent = 'Saved — nice work.'; statusEl.className = 'status-msg ok';
+    document.getElementById('s_mood').value = '';
+    document.getElementById('s_notes').value = '';
+    renderDynamicFields(document.getElementById('s_type').value);
+    refreshMyFeeds();
+  } else {
+    statusEl.textContent = 'Could not save — try again.'; statusEl.className = 'status-msg err';
+  }
+}
+
+async function onSaveTest(){
+  const statusEl = document.getElementById('testStatus');
+  const entry = {
+    date: document.getElementById('t_date').value || todayISO(),
+    testType: document.getElementById('t_type').value,
+    metricLabel: document.getElementById('t_metric_label').value.trim(),
+    metricValue: document.getElementById('t_metric_value').value.trim(),
+    notes: document.getElementById('t_notes').value.trim()
+  };
+  const ok = await saveTestEntry(entry);
+  if(ok){
+    statusEl.textContent = 'Test saved.'; statusEl.className = 'status-msg ok';
+    document.getElementById('t_metric_label').value = '';
+    document.getElementById('t_metric_value').value = '';
+    document.getElementById('t_notes').value = '';
+    refreshMyFeeds();
+  } else {
+    statusEl.textContent = 'Could not save — try again.'; statusEl.className = 'status-msg err';
+  }
+}
+
+async function init(){
+  if(SUPABASE_URL === "YOUR_SUPABASE_PROJECT_URL" || SUPABASE_ANON_KEY === "YOUR_SUPABASE_ANON_KEY"){
+    document.body.innerHTML = `<div style="padding:60px 40px; max-width:600px; font-family:'Source Sans 3', sans-serif;">
+      <h2 style="font-family:'Oswald',sans-serif; color:#B5401D;">Not connected to a database yet</h2>
+      <p>Open <code>index.html</code> in a text editor and replace <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> near the top of the script with the values from your Supabase project (Settings &gt; API).</p>
+    </div>`;
+    return;
+  }
+
+  document.getElementById('loginBtn').addEventListener('click', attemptLogin);
+  document.getElementById('login_password').addEventListener('keydown', e=>{ if(e.key==='Enter') attemptLogin(); });
+  document.getElementById('signOutBtn').addEventListener('click', signOut);
+
+  document.querySelectorAll('.tab').forEach(t=> t.addEventListener('click', ()=>showTab(t.dataset.tab)));
+  document.getElementById('s_type').addEventListener('change', (e)=> renderDynamicFields(e.target.value));
+  document.getElementById('s_rpe').addEventListener('input', (e)=>{ document.getElementById('s_rpe_val').textContent = e.target.value; });
+  document.getElementById('s_soreness').addEventListener('input', (e)=>{ document.getElementById('s_soreness_val').textContent = e.target.value; });
+  document.getElementById('saveSessionBtn').addEventListener('click', onSaveSession);
+  document.getElementById('saveTestBtn').addEventListener('click', onSaveTest);
+  document.getElementById('addFieldBtn').addEventListener('click', onAddField);
+  document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+  document.getElementById('coachAthleteSelect').addEventListener('change', (e)=> loadCoachAthleteView(e.target.value));
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  if(sessionData && sessionData.session){
+    await loadCurrentUserAndStart();
+  } else {
+    showLogin();
+  }
+}
+
+init();
+})();
+</script>
+</body>
+</html>
